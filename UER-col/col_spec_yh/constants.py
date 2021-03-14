@@ -1,0 +1,9 @@
+ROW_SEP = '\0\0 '
+COL_SEP = '\0 '
+CSV_SEP = '\0\t'
+
+PAD_ID = 0
+UNK_ID = 100
+CLS_ID = 101
+SEP_ID = 102
+MASK_ID = 103

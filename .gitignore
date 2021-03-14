@@ -1,0 +1,37 @@
+# data
+/data/efth/
+/data/tabEL/
+/data/turl/
+*/data/aida/IO
+*/data/
+*/data/spider/
+*/mnist/
+/.git/
+*debug_space/
+
+# log
+/logs
+/data_observation/log_*
+/col_cls_workspace/log_tem
+*/runs/
+/UER-col/col_cls_workspace/runs/
+
+# suffix
+*.db
+*.tar.gz
+bert_model.bin*
+Log*
+runs*
+log*
+*.log
+rec_all*
+acc_rec*
+tem*
+data*
+all_scalars.json
+
+# others
+**/__pycache__/
+
+
+

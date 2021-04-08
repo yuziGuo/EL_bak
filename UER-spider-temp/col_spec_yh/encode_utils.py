@@ -12,25 +12,26 @@ _is_cls = lambda x: (x < 10000) * (x > 0)
 
 
 # nl
-_is_que = lambda x: _row_idx(x) == 98 * _col_idx == 0
+_is_que = lambda x: _row_idx(x) == 99 * _col_idx == 0
 
 # tbl
 _is_meta_wo_cls = lambda x:_is_tok(x) * _row_idx(x)>=98
 
-_is_title = lambda x: x % 10000 == 9999
-_is_title_cls = lambda x: x == 9999
-_is_title_wo_cls = lambda x: (x > 10000) * (x % 10000 == 9999)
+_is_title = lambda x: x % 10000 == 9898
+_is_title_cls = lambda x: x == 9898  # tab_cls
+_is_title_wo_cls = lambda x: (x > 10000) * (x % 10000 == 9898)
 
-_is_header = lambda x: x % 100 == 98
-_is_header_cls = lambda x: (x < 10000) * (x % 100 == 98)
-_is_header_wo_cls = lambda x: (x > 10000) * (x % 100 == 98)
+_is_header = lambda x: _row_idx(x) == 98
+_is_header_cls = lambda x: _is_cls(x) * _is_header(x) # col_cls
+_is_header_wo_cls = lambda x: _is_tok(x) * _is_header(x)
+
+_is_row_cls = lambda x: _is_cls(x) * _col_idx==98  # row_cls
 
 # cell
 _is_cell = lambda x: (_col_idx(x) >= 1) * (_col_idx(x) <= 97) * \
                        (_row_idx(x) >= 1) * (_row_idx(x) <= 97)
-
 _is_cell_tok = lambda x: _is_tok(x) * _is_cell(x)
-_is_cell_cls = lambda x: _is_cls(x) * _is_cell(x)
+_is_cell_cls = lambda x: _is_cls(x) * _is_cell(x)  # cell_cls
 
 def generate_seg(args, cols, noise_num=0, row_wise_fill=False):
     '''
@@ -100,7 +101,73 @@ def generate_seg(args, cols, noise_num=0, row_wise_fill=False):
     return tokens, seg
 
 
-def generate_mask(seg, mask_mode='cross-wise', additional_ban=0):
+def generate_mask_todo(seg, context_mode='cross-wise'):
+    '''
+    1) In parallel with what I had written in my paper.
+    2) Drop using cross-wise AND additional mask
+    '''
+
+    if seg.dim() == 1:
+        seg = seg.unsqueeze(0)
+
+    bz, seq_len = seg.shape
+    seg = seg.view(bz, seq_len, 1)
+    seg_2 = seg.view(bz, 1, seq_len)
+
+
+    def _in_cross_with(seg, seg_2):
+        return (_row_idx(seg) == _row_idx(seg_2)) or (_col_idx(seg) == _col_idx(seg_2))
+
+    tok_see = _is_tok(seg) * (_in_cross_with(seg, seg_2) * (_is_tok(seg_2) or _is_header(seg_2) or _is_row_cls(seg_2)))
+    cell_cls_see = _is_cell_cls(seg) * (_in_cross_with())
+
+
+    # hier part
+    additional_mask = 1 - (_is_cell_cls(seg_2) * (_cell_idx(seg) != _cell_idx(seg_2))) \
+        .float().unsqueeze(1)
+
+    # cross part
+    row_wise_see = (_row_idx(seg) == _row_idx(seg_2)).unsqueeze(1).float()
+    col_wise_see = (_col_idx(seg) == _col_idx(seg_2)).unsqueeze(1).float()
+    return (row_wise_see + col_wise_see) * additional_mask
+
+def generate_mask(seg, mask_mode='cross-wise'):
+    '''
+    1) In parallel with what I had written in my paper.
+    2) Drop using cross-wise AND additional mask
+
+    Difference:
+    1) tab-cls 可以看到 col-cls 和 row-cls （但是不能看到 cell-cls）
+    2) cell-cls 可以看到 cross 位置的 token
+    3) 可选同行或同列可见
+    '''
+
+    if seg.dim() == 1:
+        seg = seg.unsqueeze(0)
+
+    bz, seq_len = seg.shape
+    seg = seg.view(bz, seq_len, 1)
+    seg_2 = seg.view(bz, 1, seq_len)
+
+    # 1. cross part
+    if mask_mode=='cross-wise':
+        wise_see = (_row_idx(seg) == _row_idx(seg_2)) * (_col_idx(seg) == _col_idx(seg_2))
+    if mask_mode=='row-wise':
+        wise_see = (_row_idx(seg) == _row_idx(seg_2))
+    if mask_mode=='col-wose':
+        wise_see = (_col_idx(seg) == _col_idx(seg_2))
+    # 2. hier part
+    # 2.1. down_up:
+    tab_see = (_is_title_cls(seg) * _is_tok(seg_2))
+
+    # 2.2. 阻断 cell-cls到处被看到
+    additional_mask = ~ (_is_cell_cls(seg_2) * (_cell_idx(seg) != _cell_idx(seg_2)))
+
+    m = (wise_see + tab_see) * additional_mask
+    return m.float().unsqueeze(1)
+
+
+def generate_mask_former(seg, mask_mode='cross-wise', additional_ban=0):
     '''
     :param seg -> torch.LongTensor          shape: [bz, seq_len]
     :return: mask -> torch.FloatTensor      shape: [bz, 1, seq_len, seq_len]
@@ -109,6 +176,7 @@ def generate_mask(seg, mask_mode='cross-wise', additional_ban=0):
     if seg.dim() == 1:
         seg = seg.unsqueeze(0)
 
+    import ipdb; ipdb.set_trace()
     bz, seq_len = seg.shape
     seg = seg.view(bz, seq_len, 1)
     seg_2 = seg.view(bz, 1, seq_len)
@@ -128,7 +196,8 @@ def generate_mask(seg, mask_mode='cross-wise', additional_ban=0):
         additional_mask = 1 - ((seg>10000)*(seg_2<10000)*(seg%10000!=seg_2)).float().unsqueeze(1)
     elif additional_ban==4:
         # additional_mask = 1 - ((seg_2<10000)*(seg%10000!=seg_2)).float().unsqueeze(1)
-        additional_mask = 1 - _is_cell_cls(seg_2)*(_cell_idx(seg)!=_cell_idx(seg_2)).float().unsqueeze(1)
+        additional_mask = 1 - (_is_cell_cls(seg_2)*(_cell_idx(seg)!=_cell_idx(seg_2)))\
+            .float().unsqueeze(1)
     else:
         additional_mask = torch.ones(bz, 1, seq_len, seq_len)
         additional_mask.to(seg.device)

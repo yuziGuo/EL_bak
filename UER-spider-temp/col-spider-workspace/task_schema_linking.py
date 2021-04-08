@@ -193,6 +193,7 @@ def que_step_loader(args, tbls, ques):
         nids = torch.cat([db_n_idxs, nl_n_idxs])
         seg = torch.cat([seg_for_db, seg_for_nl]).to(args.device)
         g = dgl.graph((edges[1], edges[0]))
+        print(g)
         yield g, nids, seg
 
 

@@ -15,6 +15,7 @@
 /col_cls_workspace/log_tem
 */runs/
 /UER-col/col_cls_workspace/runs/
+UER-spider-temp/acc_and_loss.json
 
 # suffix
 *.db

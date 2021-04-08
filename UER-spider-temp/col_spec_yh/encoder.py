@@ -9,7 +9,7 @@ from col_spec_yh.transformer import TransformerLayerOnGraph
 import torch
 import time
 
-from col_spec_yh.encode_utils import generate_mask
+from col_spec_yh.encode_utils_db import generate_mask
 
 class BertTabEncoder(nn.Module):
     """
@@ -20,7 +20,6 @@ class BertTabEncoder(nn.Module):
         self.layers_num = args.layers_num
         if not args.dgl_backend:
             self.mask_mode = args.mask_mode
-            self.additional_ban = args.additional_ban
             self.transformer = nn.ModuleList([
                 TransformerLayer(args) for _ in range(self.layers_num)
             ])
@@ -55,13 +54,12 @@ class BertTabEncoder(nn.Module):
             # Generate mask according to segment indicators.
             # mask: [batch_size x 1 x seq_length x seq_length]
             assert self.mask_mode in ['row-wise', 'col-wise', 'cross-wise', 'cross-and-hier-wise']
-            mask = generate_mask(seg, self.mask_mode, self.additional_ban)
+            mask = generate_mask(seg, self.mask_mode)
             mask = (mask > 0).float()
             mask = (1.0 - mask) * -10000.0
             hidden = emb
             layers = list(range(self.layers_num))
             for i in layers:
-                # import ipdb; ipdb.set_trace()
                 hidden = self.transformer[i](hidden, mask)
 
             #  TODO

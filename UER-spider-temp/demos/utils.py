@@ -142,6 +142,9 @@ def load_or_initialize_parameters(args, model):
         print("[YH INFO] : Loading pretrained parameters from {}.".format(args.pretrained_model_path))
         # Initialize with pretrained model.
         model.load_state_dict(torch.load(args.pretrained_model_path), strict=False)
+        # special for table
+        for i in range(1,5):
+            model.state_dict()['embedding.word_embedding.weight'][i] = model.state_dict()['embedding.word_embedding.weight'][101]
     else:
         # Initialize with normal distribution.
         for n, p in list(model.named_parameters()):
@@ -157,7 +160,8 @@ def build_optimizer(args, model):
                 {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay_rate': 0.0}
     ]
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, correct_bias=False)
-    scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.train_steps*args.warmup, t_total=args.train_steps)
+    #scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.train_steps*args.warmup, t_total=args.train_steps)
+    scheduler = None
     return optimizer, scheduler
 
 

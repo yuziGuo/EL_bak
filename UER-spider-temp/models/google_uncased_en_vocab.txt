@@ -1,6 +1,6 @@
 [PAD]
-[TAB-CLS]
-[COL-CLS]
+[TAB_CLS]
+[COL_CLS]
 [ROW_CLS]
 [CELL_CLS]
 [SQL_NONE]

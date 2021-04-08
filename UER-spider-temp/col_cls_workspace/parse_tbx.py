@@ -10,6 +10,7 @@ c = '&experiment=&format=csv'
 
 # a _ b  [t2d/limaye/wikipedia] c
 import os
+import numpy as np
 path = './runs2/'
 
 def parse_tbx_to_csv(out_name = 'acc_rec'):
@@ -57,6 +58,8 @@ def parse_csv(path='acc_rec'):
                 # import ipdb;ipbd.set_trace()
                 n = len(accs)
                 acc_mean = accs.mean()
+                if acc_mean is np.nan:
+                    continue
                 print(i, j, k, acc_mean, n)
 
 
